@@ -1,0 +1,102 @@
+---
+title: "DiNeR Tutorial"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+source("./DifferentialNetworkVis.R")
+```
+
+## Create dummy data
+TODO: maybe use some random Giotto output later
+
+```{r include=TRUE}
+test_df_1 <- data.frame(N1 = c("A","B","C"), N2 = c("A","A","F"), Weight=c(2.78, -5.12, -1.28), Type=c("Enriched", "Depleted", "Depleted"), stringsAsFactors=FALSE)
+test_df_2 <- data.frame(N1 = c("E","A","A","H","C","F"), N2 = c("D","B","F","G","A","F"), Weight=c(2.78, -5.12, 1.28, 6.7, 1.9, -8.3), Type=c("Enriched", "Depleted", "Enriched", "Enriched", "Enriched", "Depleted"), stringsAsFactors=FALSE)
+test_df_3 <- data.frame(N1 = c("A","B","F","C"), N2 = c("G","A","B","D"), Weight=c(1,2,3,4), Type=c("Enriched", "Enriched", "Enriched", "Enriched"), stringsAsFactors=FALSE)
+
+# node_info <- data.frame(Node = c("A","B","C","D","E","F","G","H"), Macrophage = c(TRUE, TRUE, TRUE, FALSE, FALSE, TRUE, FALSE, TRUE), Group = c("G1", "G2", "G2", "G3", "G1", "G2", "G3", "G3"), stringsAsFactors = FALSE)
+
+# 
+# df_list <- list(test_df_1, test_df_2, test_df_3)
+# 
+# diff_network_object <- create_diff_network_object(df_list)
+# fill_missing_vals(diff_network_object[[1]][[1]], get_node_ids(diff_network_object), diff_network_object[[3]])
+# 
+# weighted_network <- scale_edge_weight(diff_network_object)
+# plot_individual(weighted_network)
+# # 
+# # plot_individual(create_diff_network_object(df_list), 2)
+# # consensus_edge(create_diff_network_object(df_list))
+# make_piecharts(diff_network_object)
+
+```
+
+## Creating object
+
+```{r }
+edge_lists <- lapply(list(test_df_1, test_df_2, test_df_3), function(x){
+  return(x[,c("N1", "N2")])
+})
+
+diff_network_object <- create_diff_network_object(edge_lists)
+
+print(diff_network_object)
+
+```
+
+Let's try adding some data for individuals
+
+
+```{r}
+individual_info <- data.frame(Index=c(1,2,3), PatientID=c("Patient 131", "Patient 32", "Patient 203"), Diagnosis=c("Control", "Disease", "Disease"))
+diff_network_object = add_individual_features(diff_network_object, individual_info)
+```
+
+
+```{r}
+diff_network_object = add_individual_features(diff_network_object, data.frame(Age=c(47, 53, 28)))
+```
+
+
+```{r}
+diff_network_object
+```
+
+now let's add some edge features
+
+```{r}
+edge_feature_list = edge_lists <- lapply(list(test_df_1, test_df_2, test_df_3), function(x){
+  return(x[,c("Weight", "Type")])
+})
+
+diff_network_object = add_edge_features(diff_network_object, edge_feature_list)
+
+```
+
+
+```{r}
+diff_network_object
+```
+
+```{r}
+plot_individual(diff_network_object)
+```
+
+```{r}
+colors <- data.frame(high=c("#191970", "#ADD8E6"), low=c("#9A2A2A", "#FAA0A0"))
+plot_individual(diff_network_object, colors=colors)
+```
+
+
+
+
+
+
+
+
