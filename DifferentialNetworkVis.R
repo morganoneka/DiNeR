@@ -203,6 +203,145 @@ plot_individual <-function(diff_network_object,idx=1,edge_weight="Weight", edge_
   g
 }
 
-#TODO: consensus edge
+#TODO: allow calculation for consensus edge for ALL vs. just a subset 
+# (i.e. consensus for certain indices, or patients with a certain label)
+consensus_edge <- function(diff_network_object, node1="N1", node2="N2", edge_weight="Weight", edge_color="Type"){
+ 
+  node1="N1"
+  node2="N2"
+  
+  
+  node_xy_df <- diff_network_object$NodeXY
+  
+  edge_list_labels = c(node1,node2)
+  
+  # combine the edge lists from all individuals
+  edge_list <- do.call(rbind,lapply(diff_network_object$EdgeList, FUN = function(x){x[,edge_list_labels]} ))
+  
+  edge_list_in_order <- edge_list[which(edge_list[,node1] <= edge_list[,node2]),]
+  edge_list_out_of_order <- edge_list[which(edge_list[,node1] > edge_list[,node2]),]
+  colnames(edge_list_out_of_order) <- c(node2,node1)
+  
+  
+  occurrences <- melt(table(rbind(edge_list_in_order, edge_list_out_of_order)))
+  occurrences <- occurrences[which(occurrences$value >0),]
+  
+  occurrences <- merge(occurrences, node_xy_df, by.x=node1, by.y="Node", all.x=TRUE, all.y=FALSE)
+  occurrences <- merge(occurrences, node_xy_df, by.x=node2, by.y="Node", all.x=TRUE, all.y=FALSE)
+  
+  splits_occurrences <- split_loops(occurrences)
+  
+  edges_loops_occurrences <- splits_occurrences[[1]]
+  edges_nonloops_occurrences <- splits_occurrences[[2]]
+  
+  ggplot() + 
+    geom_curve(
+      aes(x = X.x, y = Y.x, xend = X.y, yend = Y.y, size=abs(value), color=abs(value)),
+      data = edges_nonloops_occurrences
+    ) +
+    geom_curve(
+      aes(x = X.x, y = Y.x, xend = X.y, yend = Y.y, size=abs(value), color=abs(value)),  curvature = 50,angle = 270,
+      data = edges_loops_occurrences
+    ) +
+    guides(size=guide_legend(title="Number of Patients w/ Interaction")) +
+    guides(color=guide_legend(title="Number of Patients w/ Interaction")) +
+    geom_circle(aes(x0 = X, y0 = Y, r = radius, fill = Node), data=node_xy_df) +geom_label_repel(aes(x=X,y=Y,label=Node),hjust=0, vjust=0, data=node_xy_df) +
+    guides(fill=guide_legend(title="Cell Type")) + 
+    ylim(c(0, max(node_xy_df$Y+10))) + xlim(c(0, max(node_xy_df$X+10))) +
+    coord_fixed() + theme_void()
+} 
 
 #TODO: unique edges
+
+
+
+############################ PIE CHART VISUALIZATION ######################
+# TODO: fix me, not totally working yet
+make_piecharts <- function(diff_network_object, colors=c(), edge_feature=""){
+  
+  #TODO test to see if edge_Feature is in columns for diff_network_object$EdgeFeature
+  
+  node1="N1"
+  node2="N2"
+  
+  node_xy_df <- diff_network_object$NodeXY
+  
+  edge_list_labels = c(node1,node2)
+  
+  #TODO: change edge list
+  edge_list <- do.call(rbind,lapply(1:length(diff_network_object$EdgeList), FUN = function(x){
+    # combine the 
+    cbind(diff_network_object$EdgeList[[x]][,c(node1,node2)], diff_network_object$EdgeFeatures[[x]][,edge_feature])
+  } ))
+  
+  edge_list_in_order <- edge_list[which(edge_list[,node1] <= edge_list[,node2]),]
+  edge_list_out_of_order <- edge_list[which(edge_list[,node1] > edge_list[,node2]),]
+  colnames(edge_list_out_of_order) <- c(node2,node1,  edge_feature)
+  
+  occurrences <- melt(table(rbind(edge_list_in_order, edge_list_out_of_order)))
+  
+  celltypes <- unlist(diff_network_object[[2]]$Node)
+  coords <- as.data.frame(cbind(celltypes, 1:length(celltypes)), stringsAsFactors = FALSE)
+  coords$V2 = as.numeric(coords$V2)
+  
+  combo = merge(occurrences, coords, by.x=node1, "celltypes", all=FALSE)
+  combo = merge(combo, coords, by.x=node2, "celltypes", all=FALSE)
+  
+  colnames(combo) <- c(node1,node2,  edge_feature, "value", "X", "Y")
+  # combo[is.na(combo$value),"value"] = 0
+  
+  combo_flipped  = merge(occurrences, coords, by.x=node2, "celltypes", all=FALSE)
+  combo_flipped = merge(combo_flipped, coords, by.x=node1, "celltypes", all=FALSE)
+  
+  colnames(combo_flipped) <- c(node1,node2, edge_feature, "value", "X", "Y")
+  
+  combo = rbind(combo, combo_flipped)
+  combo = combo[which(combo$value >0),]
+  
+  num_patients = length(diff_network_object[[1]])
+  
+  combo[,node1] = as.character(combo[,node1])
+  combo[,node2] = as.character(combo[,node2])
+  
+  interaction_types = unique(unlist(lapply(diff_network_object[[1]], "[[", edge_feature)))
+  
+  for (cell1 in celltypes){
+    for (cell2 in celltypes){
+      for (inxtype in c(interaction_types)){
+        
+        w = which(combo$cell_1 == cell1 & combo$cell_2 == cell2 & combo$InxType == inxtype)
+        # print(w)
+        if (length(w) == 0){
+          combo = rbind(combo, c(cell1,cell2,inxtype,0,coords[which(coords$celltypes == cell1), "V2"],coords[which(coords$celltypes == cell2), "V2"]), stringsAsFactors=FALSE)
+        }
+      }
+    }
+  }
+  
+  combo$X = as.numeric(combo$X)
+  combo$Y = as.numeric(combo$Y)
+  combo[,edge_feature] = as.character(combo[,edge_feature])
+  combo$value = as.numeric(combo$value)
+  combo$value = combo$value / num_patients
+  
+  # combo_clean <- dcast(unique(combo), node1 + node2 ~ edge_feature, value.var="value")
+  # TODO: dcast is giving an issue so see what's up
+  combo_clean <- dcast(unique(combo), as.formula(paste(paste(node1, node2, sep="+"), "~", edge_feature)), value.var="value")
+  combo_clean = merge(combo_clean, coords, by.x=node1, "celltypes", all=FALSE)
+  combo_clean = merge(combo_clean, coords, by.x=node2, "celltypes", all=FALSE)
+  colnames(combo_clean) <- c("cell_1", "cell_2", interaction_types, "X", "Y")
+  combo_clean$Neither = 1 - rowSums(combo_clean[,interaction_types])/num_patients
+  combo_clean$radius = 0.25
+  
+  if (length(colors) != (length(interaction_types)+1)){
+    colors = rainbow(length(interaction_types)+1)
+  }
+  
+  
+  ggplot() + geom_scatterpie(aes_string(x="X", y="Y", r="radius"), data=combo_clean, cols=c(interaction_types, "Neither")) + coord_equal() +
+    scale_x_discrete(limits = as.character(0:(length(celltypes)-1) + 0.5), breaks=as.character(0:(length(celltypes)-1) + 0.5), labels=celltypes) +
+    scale_y_discrete(limits = as.character(0:(length(celltypes)-1) + 0.5), breaks=as.character(0:(length(celltypes)-1) + 0.5), labels=celltypes) + 
+    theme_pubr() + theme(axis.text.x = element_text(angle = 45, hjust = 1, size=7), axis.text.y = element_text(size=7), axis.title.x = element_blank(), axis.title.y = element_blank())  + 
+    scale_fill_manual(values=colors) + labs(fill = "Interaction Type")
+  
+}

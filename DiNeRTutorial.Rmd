@@ -19,22 +19,6 @@ TODO: maybe use some random Giotto output later
 test_df_1 <- data.frame(N1 = c("A","B","C"), N2 = c("A","A","F"), Weight=c(2.78, -5.12, -1.28), Type=c("Enriched", "Depleted", "Depleted"), stringsAsFactors=FALSE)
 test_df_2 <- data.frame(N1 = c("E","A","A","H","C","F"), N2 = c("D","B","F","G","A","F"), Weight=c(2.78, -5.12, 1.28, 6.7, 1.9, -8.3), Type=c("Enriched", "Depleted", "Enriched", "Enriched", "Enriched", "Depleted"), stringsAsFactors=FALSE)
 test_df_3 <- data.frame(N1 = c("A","B","F","C"), N2 = c("G","A","B","D"), Weight=c(1,2,3,4), Type=c("Enriched", "Enriched", "Enriched", "Enriched"), stringsAsFactors=FALSE)
-
-# node_info <- data.frame(Node = c("A","B","C","D","E","F","G","H"), Macrophage = c(TRUE, TRUE, TRUE, FALSE, FALSE, TRUE, FALSE, TRUE), Group = c("G1", "G2", "G2", "G3", "G1", "G2", "G3", "G3"), stringsAsFactors = FALSE)
-
-# 
-# df_list <- list(test_df_1, test_df_2, test_df_3)
-# 
-# diff_network_object <- create_diff_network_object(df_list)
-# fill_missing_vals(diff_network_object[[1]][[1]], get_node_ids(diff_network_object), diff_network_object[[3]])
-# 
-# weighted_network <- scale_edge_weight(diff_network_object)
-# plot_individual(weighted_network)
-# # 
-# # plot_individual(create_diff_network_object(df_list), 2)
-# # consensus_edge(create_diff_network_object(df_list))
-# make_piecharts(diff_network_object)
-
 ```
 
 ## Creating object
@@ -84,19 +68,55 @@ diff_network_object = add_edge_features(diff_network_object, edge_feature_list)
 diff_network_object
 ```
 
+Using `plot individual` with no other inputs. The color scheme will be randomly decided.
+
 ```{r}
 plot_individual(diff_network_object)
 ```
 
+We can, however, add our own color scheme
+
+
 ```{r}
-colors <- data.frame(high=c("#191970", "#ADD8E6"), low=c("#9A2A2A", "#FAA0A0"))
+#TODO: need to add input for node colors? 
+colors <- data.frame(high=c("#191970", "#ADD8E6", "#7FFFD4"), low=c("#9A2A2A", "#FAA0A0", "#2AAA8A"))
 plot_individual(diff_network_object, colors=colors)
 ```
 
 
+We can also use `lapply` to run this on all of our data
+```{r}
+# TODO: the colors for edges aren't the same for all patients... need to use rownames 
+lapply(1:3, function(i){
+  plot_individual(diff_network_object, idx=i, colors=colors)
+})
+```
+
+## More comparisons across individuals
+
+Consensus edge plots allow us to see the occurrence of edges
+```{r}
+# TODO: make edge legend gradient or remove 1.5, 2.5 etc.
+# TODO: need to change legend labels for all (use labels)
+consensus_edge(diff_network_object)
+```
+
+## Pie charts
+```{r}
+make_piecharts(diff_network_object, edge_feature="Type")
+```
 
 
+## Making edits to graphs
+```{r}
+#TODO: how can we change some of the elements, i.e. legend fonts, sizes, etc?
+```
 
 
+## My own to-do list
+```{r}
+#TODO: include a way to label all "empty" edges. i.e. if it isn't enriched or depleted, it's neither
+
+```
 
 
