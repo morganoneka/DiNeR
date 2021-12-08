@@ -256,7 +256,6 @@ consensus_edge <- function(diff_network_object, node1="N1", node2="N2", edge_wei
 
 
 ############################ PIE CHART VISUALIZATION ######################
-# TODO: fix me, not totally working yet
 make_piecharts <- function(diff_network_object, colors=c(), edge_feature=""){
   
   #TODO test to see if edge_Feature is in columns for diff_network_object$EdgeFeature
@@ -268,59 +267,72 @@ make_piecharts <- function(diff_network_object, colors=c(), edge_feature=""){
   
   edge_list_labels = c(node1,node2)
   
-  #TODO: change edge list
+  # for each individual, combine edge list with edge features
   edge_list <- do.call(rbind,lapply(1:length(diff_network_object$EdgeList), FUN = function(x){
-    # combine the 
     cbind(diff_network_object$EdgeList[[x]][,c(node1,node2)], diff_network_object$EdgeFeatures[[x]][,edge_feature])
   } ))
   
+  # combine in-order and reverse-order edge lists
   edge_list_in_order <- edge_list[which(edge_list[,node1] <= edge_list[,node2]),]
   edge_list_out_of_order <- edge_list[which(edge_list[,node1] > edge_list[,node2]),]
   colnames(edge_list_out_of_order) <- c(node2,node1,  edge_feature)
+  colnames(edge_list_in_order) <- c(node1,node2,  edge_feature)
   
+  # get counts for each node-node pair and possible edge class
   occurrences <- melt(table(rbind(edge_list_in_order, edge_list_out_of_order)))
   
-  celltypes <- unlist(diff_network_object[[2]]$Node)
+  # create new coordinate system for pie chart
+  celltypes <- unlist(diff_network_object$NodeXY$Node)
   coords <- as.data.frame(cbind(celltypes, 1:length(celltypes)), stringsAsFactors = FALSE)
   coords$V2 = as.numeric(coords$V2)
   
+  # combine edge counts with coordinate system
   combo = merge(occurrences, coords, by.x=node1, "celltypes", all=FALSE)
   combo = merge(combo, coords, by.x=node2, "celltypes", all=FALSE)
-  
   colnames(combo) <- c(node1,node2,  edge_feature, "value", "X", "Y")
-  # combo[is.na(combo$value),"value"] = 0
-  
   combo_flipped  = merge(occurrences, coords, by.x=node2, "celltypes", all=FALSE)
   combo_flipped = merge(combo_flipped, coords, by.x=node1, "celltypes", all=FALSE)
-  
   colnames(combo_flipped) <- c(node1,node2, edge_feature, "value", "X", "Y")
-  
   combo = rbind(combo, combo_flipped)
   combo = combo[which(combo$value >0),]
   
+  # how many individuals do we have
   num_patients = length(diff_network_object[[1]])
   
+  # convert from factor to character 
   combo[,node1] = as.character(combo[,node1])
   combo[,node2] = as.character(combo[,node2])
   
-  interaction_types = unique(unlist(lapply(diff_network_object[[1]], "[[", edge_feature)))
+  # identify all possible interaction types
+  interaction_types = unique(unlist(lapply(diff_network_object$EdgeFeatures, "[[", edge_feature)))
   
+  # adds rows for missing pairs (i.e. if there isn't a depleted edge between A and C, adds a row that's like A C depleted 0)
   for (cell1 in celltypes){
     for (cell2 in celltypes){
       for (inxtype in c(interaction_types)){
+
         
-        w = which(combo$cell_1 == cell1 & combo$cell_2 == cell2 & combo$InxType == inxtype)
+        w = which(combo[,node1] == cell1 & combo[,node2] == cell2 & combo[,edge_feature] == inxtype)
+        # print(cell1,cell2,inxtype)
         # print(w)
         if (length(w) == 0){
+          # print(cell1,cell2,inxtype)
+          # print("UGH")
           combo = rbind(combo, c(cell1,cell2,inxtype,0,coords[which(coords$celltypes == cell1), "V2"],coords[which(coords$celltypes == cell2), "V2"]), stringsAsFactors=FALSE)
         }
       }
     }
   }
   
+  #TODO: fix to not need this later
+  combo = combo[!duplicated(combo[,c(node1,node2,edge_feature)]),]
+  
+  # convert to the correct data types
   combo$X = as.numeric(combo$X)
   combo$Y = as.numeric(combo$Y)
   combo[,edge_feature] = as.character(combo[,edge_feature])
+  
+  # convert value to percentage
   combo$value = as.numeric(combo$value)
   combo$value = combo$value / num_patients
   
@@ -329,7 +341,7 @@ make_piecharts <- function(diff_network_object, colors=c(), edge_feature=""){
   combo_clean <- dcast(unique(combo), as.formula(paste(paste(node1, node2, sep="+"), "~", edge_feature)), value.var="value")
   combo_clean = merge(combo_clean, coords, by.x=node1, "celltypes", all=FALSE)
   combo_clean = merge(combo_clean, coords, by.x=node2, "celltypes", all=FALSE)
-  colnames(combo_clean) <- c("cell_1", "cell_2", interaction_types, "X", "Y")
+  colnames(combo_clean) <- c(node1,node2, interaction_types, "X", "Y")
   combo_clean$Neither = 1 - rowSums(combo_clean[,interaction_types])/num_patients
   combo_clean$radius = 0.25
   
