@@ -144,6 +144,44 @@ sort_list <- function(edge_list_df, edge_vars){
   return(fixed)
 }
 
+# a function which splits edge lists by a group
+split_by_group <- function(diff_network_object, group_label){
+  
+  # TODO: check if group_label is in individual features
+  
+  groups = unique(diff_network_object$IndividualFeatures[,group_label])
+  
+
+  # TODO: return list where index is group name, value is diff network object just for that group
+  group_dnos = lapply(groups, function(g){
+    
+    # indices of individuals in this group
+    indices = which(diff_network_object$IndividualFeatures[,group_label] == g)
+    
+    sub_dno = list(
+      EdgeList = diff_network_object$EdgeList[indices],
+      NodeXY = diff_network_object$NodeXY,
+      IndividualFeatures = diff_network_object$IndividualFeatures[indices,],
+      EdgeFeatures = diff_network_object$EdgeFeatures[indices]
+    )
+    
+    sub_dno$NodeXY[,"Index"] = 1:length(indices)
+    
+    return(sub_dno)
+    
+  })
+}
+
+# get all possible values for an edge feature
+get_possible_values_edge_feature <- function(diff_network_object, edge_feature=""){
+  do.call(rbind, diff_network_object$EdgeFeatures)[,edge_feature] %>% unique() 
+}
+
+# get all possible values for an individual grouping
+get_possible_values_individual <- function(diff_network_object, individual_feature=""){
+  diff_network_object$IndividualFeatures[,individual_feature] %>% unique()
+}
+
 ############################ NETWORK VISUALIZATION ######################
 plot_individual <-function(diff_network_object,idx=1,edge_weight="Weight", edge_color="Type", colors=NULL){
   
@@ -356,4 +394,103 @@ make_piecharts <- function(diff_network_object, colors=c(), edge_feature=""){
     theme_pubr() + theme(axis.text.x = element_text(angle = 45, hjust = 1, size=7), axis.text.y = element_text(size=7), axis.title.x = element_blank(), axis.title.y = element_blank())  + 
     scale_fill_manual(values=colors) + labs(fill = "Interaction Type")
   
+}
+
+#TODO: not done
+make_piecharts_by_group <- function(diff_network_object, colors=c(), edge_feature="", group_label=""){
+  
+  node1 = "N1"
+  node2 = "N2"
+  
+  # split into groups 
+  split_dnos = split_by_group(diff_network_object, group_label)
+  
+  # get possible values for groups 
+  #TODO make sure this is always in the same order?
+  groups = get_possible_values_individual(diff_network_object, group_label)
+  
+  # get possible edge feature values
+  edge_features = get_possible_values_edge_feature(diff_network_object, edge_feature)
+  
+  tables = lapply(split_dnos, function(x){
+    # get one dataframe with all edges and their features
+    g1 = cbind(do.call(rbind,x$EdgeList), do.call(rbind,x$EdgeFeatures))
+    
+    # create a column for each interaction
+    g1$Interaction = unlist(lapply(1:nrow(g1), function(i) paste(g1[i,c(node1,node2)],collapse=" / ")))
+    
+    # convert to distribution table
+    dist_table = as.data.frame(table(g1[,c( "Interaction",edge_feature)])) %>% spread(edge_feature, Freq)
+    
+    # number of "other" individuals: 
+    dist_table$Other = length(x$EdgeList) - rowSums(dist_table[,setdiff(colnames(dist_table), "Interaction")])
+    return(dist_table)
+  })
+  
+  get_row <- function(row){
+    return(lapply(1:length(tables), function(x){
+      tmp = tables[[x]]
+      idx = which(tmp$Interaction == row)
+      if (length(idx >0)){
+        return(tmp[idx,])
+      } else{
+        return(c(row, 0,0,length(split_dnos[[x]]$EdgeList)))
+      }
+
+    }))
+  }
+
+  
+  all_inx <- as.character(unique(do.call(rbind,tables)$Interaction))
+  
+  # create matrix to store distances
+  #TODO: this will only happen if flag says we sort by distance vs. 
+  inx_dist <- as.data.frame(matrix(nrow=0,ncol=2), stringsAsFactors = FALSE)
+  
+  # scatterpie coords
+  scatter_coords <- as.data.frame(matrix(nrow=0,ncol=6), stringsAsFactors = FALSE)
+  
+  for (idx in 1:length(all_inx)){
+    # get interaction counts for all groups
+    inx_numbers = do.call(rbind,get_row(all_inx[idx])) %>% as.data.frame()
+    colnames(inx_numbers) = c("Interaction", edge_features, "Other")
+    inx_numbers$Group = groups
+    inx_numbers$X = 1:nrow(inx_numbers)
+    scatter_coords = rbind(scatter_coords, inx_numbers)
+    
+    # calculate all of the probability vectors
+    prob_vec = lapply(1:nrow(inx_numbers), function(x){
+      vec = inx_numbers[x, c(edge_features, "Other")]
+      return(as.numeric(vec) / sum(as.numeric(vec)))
+    })
+    
+    # calculate all the pairwise distances
+    dists = lapply(1:(nrow(inx_numbers)-1), function(x){
+      unlist(lapply((x+1):nrow(inx_numbers), function(y){
+        return( sqrt(sum((prob_vec[[x]] - prob_vec[[y]])^2)) )
+      }))
+    })
+    
+    dist_sum = sum(unlist(dists))
+    inx_dist = rbind(inx_dist, c(all_inx[[idx]], dist_sum), stringsAsFactors=FALSE)
+    
+  }
+  
+  inx_order = cbind(inx_dist[order(inx_dist[,2]),], 1:nrow(inx_dist))
+  colnames(inx_order) <- c("Interaction", "Distance", "Y")
+  
+  merged_data = merge(scatter_coords,inx_order, by="Interaction")
+  merged_data$Radius = 0.4
+  
+  merged_data[,c(edge_features, "Other")] = sapply(merged_data[,c(edge_features, "Other")], as.numeric)
+  
+  if (length(colors) != (length(interaction_types)+1)){
+    colors = rainbow(length(interaction_types)+1)
+  }
+  
+  ggplot() + geom_scatterpie(aes(x=X, y=Y, r=Radius), data=merged_data, cols=c(edge_features, "Other"))  + coord_equal() +
+    scale_x_discrete(limits = as.character(0:(length(groups)-1) + 0.5), breaks=as.character(0:(length(groups)-1) + 0.5), labels=groups, position="top") +
+    scale_y_discrete(limits = as.character(0:(length(all_inx)-1) + 0.5), breaks=as.character(0:(length(all_inx)-1) + 0.5), labels=unique(merged_data[order(merged_data$Y, decreasing = FALSE), "Interaction"]))+ 
+    theme_pubr() + theme(axis.text.x = element_text(angle = 45, hjust = 0, size=9), axis.text.y = element_text(size=9), axis.title.x = element_blank(), axis.title.y = element_blank())  + 
+    scale_fill_manual(values=colors) + labs(fill = "Interaction Type")
 }

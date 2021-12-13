@@ -102,10 +102,22 @@ consensus_edge(diff_network_object)
 ```
 
 ## Pie charts
+
+Pie charts for one group
 ```{r}
 make_piecharts(diff_network_object, edge_feature="Type")
 ```
 
+```{r}
+#TODO: change color schemes
+
+#TODO: change label order
+```
+
+We can also create an additional visualization for multiple groups
+```{r}
+make_piecharts_by_group(diff_network_object, edge_feature="Type", group_label="Diagnosis")
+```
 
 ## Making edits to graphs
 ```{r}
