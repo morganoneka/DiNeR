@@ -8,6 +8,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
+DiNeR (*Di*fferential *Ne*twork Visualization in *R*) is a library built on top of `ggplot` meant to visualize comparisons among groups of networks.
+
 ```{r}
 source("./DifferentialNetworkVis.R")
 ```
@@ -22,70 +24,75 @@ test_df_3 <- data.frame(N1 = c("A","B","F","C"), N2 = c("G","A","B","D"), Weight
 ```
 
 ## Creating object
-
-```{r }
+Our basic DiNeR object requires a list of `data.frame` objects. Each `data.frame` corresponds to node adjacency within an individual's network.
+```{r include=TRUE}
 edge_lists <- lapply(list(test_df_1, test_df_2, test_df_3), function(x){
   return(x[,c("N1", "N2")])
 })
 
+print(edge_lists)
+```
+
+```{r include=TRUE}
 diff_network_object <- create_diff_network_object(edge_lists)
 
 print(diff_network_object)
 
 ```
 
-Let's try adding some data for individuals
+Creating the object just sets up the basic topology for each individual. However, we can also add information about:
+- Individuals (patient identifiers, diagnosis, age)
+- Nodes and Edges (labels, weights, classes)
 
+Adding information for each individual is done using the `add_individual_features` function.
 
-```{r}
+```{r include=TRUE}
 individual_info <- data.frame(Index=c(1,2,3), PatientID=c("Patient 131", "Patient 32", "Patient 203"), Diagnosis=c("Control", "Disease", "Disease"))
 diff_network_object = add_individual_features(diff_network_object, individual_info)
 ```
 
 
-```{r}
+```{r include=TRUE}
 diff_network_object = add_individual_features(diff_network_object, data.frame(Age=c(47, 53, 28)))
 ```
 
 
-```{r}
+```{r include=TRUE}
 diff_network_object
 ```
 
-now let's add some edge features
+We can add edge features using `add_edge_features`.
 
-```{r}
+```{r include=TRUE}
 edge_feature_list = edge_lists <- lapply(list(test_df_1, test_df_2, test_df_3), function(x){
   return(x[,c("Weight", "Type")])
 })
 
 diff_network_object = add_edge_features(diff_network_object, edge_feature_list)
 
-```
-
-
-```{r}
 diff_network_object
 ```
 
-Using `plot individual` with no other inputs. The color scheme will be randomly decided.
+## Individual Network Visualization
 
-```{r}
+Using `plot individual` with no other inputs. 
+
+```{r include=TRUE}
 plot_individual(diff_network_object)
 ```
 
-We can, however, add our own color scheme
+The color scheme using the above code will be randomly decided. We can, however, add our own color scheme.
 
 
-```{r}
+```{r include=TRUE}
 #TODO: need to add input for node colors? 
 colors <- data.frame(high=c("#191970", "#ADD8E6", "#7FFFD4"), low=c("#9A2A2A", "#FAA0A0", "#2AAA8A"))
 plot_individual(diff_network_object, colors=colors)
 ```
 
 
-We can also use `lapply` to run this on all of our data
-```{r}
+We can also use `lapply` to run this on all of our data using the `idx` parameter.
+```{r include=TRUE}
 # TODO: the colors for edges aren't the same for all patients... need to use rownames 
 lapply(1:3, function(i){
   plot_individual(diff_network_object, idx=i, colors=colors)
@@ -95,7 +102,7 @@ lapply(1:3, function(i){
 ## More comparisons across individuals
 
 Consensus edge plots allow us to see the occurrence of edges
-```{r}
+```{r include=TRUE}
 # TODO: make edge legend gradient or remove 1.5, 2.5 etc.
 # TODO: need to change legend labels for all (use labels)
 consensus_edge(diff_network_object)
@@ -104,7 +111,7 @@ consensus_edge(diff_network_object)
 ## Pie charts
 
 Pie charts for one group
-```{r}
+```{r include=TRUE}
 make_piecharts(diff_network_object, edge_feature="Type")
 ```
 
@@ -115,11 +122,28 @@ make_piecharts(diff_network_object, edge_feature="Type")
 ```
 
 We can also create an additional visualization for multiple groups
-```{r}
+```{r include=TRUE}
 make_piecharts_by_group(diff_network_object, edge_feature="Type", group_label="Diagnosis")
 ```
 
-## Making edits to graphs
+## Working with igraph functionality
+Because we are working with networks, we can leverage some of the functionality of the `igraph` package to calculate metrics. The `add_graphs` function creates an additional item in our DiNeR object, a list of `igraph` representations of our graph. The `add_graphs` function includes a parameter called `edge_weight` that will create a weighted graph with the desired weight if included. 
+
+```{r include=TRUE}
+diff_network_object = add_graphs(diff_network_object, edge_weight="Weight")
+
+print(diff_network_object)
+
+```
+
+```{r}
+# TODO: show workflow for coloring nodes in individual networks based on hub score
+
+lapply(diff_network_object$graphs, hub_score)
+
+```
+
+## Making edits to network visualizations
 ```{r}
 #TODO: how can we change some of the elements, i.e. legend fonts, sizes, etc?
 ```
@@ -128,6 +152,8 @@ make_piecharts_by_group(diff_network_object, edge_feature="Type", group_label="D
 ## My own to-do list
 ```{r}
 #TODO: include a way to label all "empty" edges. i.e. if it isn't enriched or depleted, it's neither
+
+
 
 ```
 

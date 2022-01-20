@@ -53,6 +53,12 @@ create_diff_network_object <- function(edge_list){
   # ggplot() + geom_circle(aes(x0 = X, y0 = Y, r = radius, fill = Node), data=node_xy_df)+
     # coord_fixed()
   
+  edge_list = lapply(edge_list, function(x){
+    tmp = x
+    colnames(tmp) = c("N1", "N2")
+    return(tmp)
+  })
+  
   return(list(
     "EdgeList" = edge_list,
     "NodeXY" = node_xy_df
@@ -291,6 +297,28 @@ consensus_edge <- function(diff_network_object, node1="N1", node2="N2", edge_wei
 
 #TODO: unique edges
 
+subset_network_plot <- function(network_plot, nodename){
+  q <- ggplot_build(network_plot)
+  
+  # get index for df within ggplot_build that works with nodes (last one)
+  node_idx = length(q$data)
+  
+  # identify location of this cell
+  celltype_loc = q$data[[node_idx]][which(q$data[[node_idx]]$label == nodename),c("y","x")]
+  
+  for (i in 1:(length(q$data)-1)){
+    relevant_lines = c(which(q$data[[i]]$y == celltype_loc$y & q$data[[i]]$x == celltype_loc$x),
+                       which(q$data[[i]]$yend == celltype_loc$y & q$data[[i]]$xend == celltype_loc$x))
+    color_title = colnames(q$data[[i]])[grep("colour", colnames(q$data[[i]]))[1]]
+    q$data[[i]][setdiff(1:nrow(q$data[[i]]),relevant_lines),color_title] = "#D3D3D3"
+    q$data[[i]]$alpha = 1
+    q$data[[i]][setdiff(1:nrow(q$data[[i]]),relevant_lines),"alpha"] = 0.2
+  }
+  
+
+  q <- ggplot_gtable(q)
+  plot(q)
+}
 
 
 ############################ PIE CHART VISUALIZATION ######################
@@ -396,7 +424,6 @@ make_piecharts <- function(diff_network_object, colors=c(), edge_feature=""){
   
 }
 
-#TODO: not done
 make_piecharts_by_group <- function(diff_network_object, colors=c(), edge_feature="", group_label=""){
   
   node1 = "N1"
@@ -493,4 +520,23 @@ make_piecharts_by_group <- function(diff_network_object, colors=c(), edge_featur
     scale_y_discrete(limits = as.character(0:(length(all_inx)-1) + 0.5), breaks=as.character(0:(length(all_inx)-1) + 0.5), labels=unique(merged_data[order(merged_data$Y, decreasing = FALSE), "Interaction"]))+ 
     theme_pubr() + theme(axis.text.x = element_text(angle = 45, hjust = 0, size=9), axis.text.y = element_text(size=9), axis.title.x = element_blank(), axis.title.y = element_blank())  + 
     scale_fill_manual(values=colors) + labs(fill = "Interaction Type")
+}
+
+############################ IGRAPH STUFF
+add_graphs <- function(diff_network_object, edge_weight=""){
+  
+  graphs = lapply(1:length(diff_network_object$EdgeList), function(i){
+    
+    g = graph_from_edgelist(diff_network_object$EdgeList[[i]] %>% as.matrix(), directed=FALSE)
+    
+    if (edge_weight != ""){
+      E(g)$weight = diff_network_object$EdgeFeatures[[i]][,edge_weight]
+    } 
+    
+    return(g)
+  })
+  
+  diff_network_object$Graphs = graphs
+  
+  return(diff_network_object)
 }
