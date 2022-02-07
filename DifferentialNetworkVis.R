@@ -6,9 +6,31 @@ library(ggrepel)
 library(ggnewscale)
 library(scatterpie)
 library(ggpubr)
+library(ggthemes)
 
 ############################ DIFF NETWORK OBJECT ######################
 create_diff_network_object <- function(edge_list){
+  
+  # error checking to assure we have exactly 2 columns to identify node-pair relationships from
+  adequate_columns = unlist(lapply(edge_list, function(x){
+    if (ncol(x) == 2){
+      return (0)
+    }  else if (ncol(x) < 2){
+      return (-1)
+    } else{
+      return (1)
+    }
+  }))
+  
+  # cannot continue if any of the lists don't have at least two columns
+  if (-1 %in% adequate_columns){
+    stop( paste("The following edge lists do not have enough columns: ", paste(which (adequate_columns == -1), collapse=",") ))
+  }
+  
+  # can continue if the lists have too many columns, but output may not be accurate
+  if (1 %in% adequate_columns){
+    warning( paste("The following edge lists have too many columns: ", paste(which (adequate_columns == 1), collapse=",") , ". Using the first 2 columns to determine node relationships."))
+  }
 
   
   # identify all distinct node types
@@ -50,9 +72,6 @@ create_diff_network_object <- function(edge_list){
   node_xy_df$Y <- as.numeric(node_xy_df$Y)
   node_xy_df$radius = 1
   
-  # ggplot() + geom_circle(aes(x0 = X, y0 = Y, r = radius, fill = Node), data=node_xy_df)+
-    # coord_fixed()
-  
   edge_list = lapply(edge_list, function(x){
     tmp = x
     colnames(tmp) = c("N1", "N2")
@@ -83,12 +102,11 @@ add_individual_features <- function(diff_network_object, df){
 }
 
 add_edge_features <- function(diff_network_object, df_list){
-  if (length(df_list) != length(diff_network_object$EdgeList)){
-    stop("DF lists not the same size")
-  }
-  
   # if we already have features, combine
   if ("EdgeFeatures" %in% names(diff_network_object)){
+    if (length(df_list) != length(diff_network_object$EdgeList)){
+      stop("DF lists not the same size")
+    }
     diff_network_object$EdgeFeatures = lapply(1:length(df_list), function(i){
       cbind(diff_network_object$EdgeFeatures[[i]], df_list[[i]])
     })
@@ -101,8 +119,17 @@ add_edge_features <- function(diff_network_object, df_list){
   
 }
 
-add_node_features <- function(diff_network_object){
-  
+add_node_features <- function(diff_network_object, df){
+  # if we already have features, combine
+  if ("NodeFeatures" %in% names(diff_network_object)){
+    if (nrow(df) != nrow(diff_network_object$NodeXY)){
+      stop(paste("Number of rows in DF (", nrow(df)  ,") is not equal to the number of nodes, (",nrow(diff_network_object$NodeXY), ") in object." ))
+    }
+    # IMPORTANT: must be in the same order!!!  
+    diff_network_object$NodeFeatures = cbind(diff_network_object$NodeFeatures, df)
+  } else { # otherwise....
+    diff_network_object$NodeFeatures = df
+  }
 }
 
 ############################ HELPER FUNCTIONS ######################
@@ -249,7 +276,7 @@ plot_individual <-function(diff_network_object,idx=1,edge_weight="Weight", edge_
 
 #TODO: allow calculation for consensus edge for ALL vs. just a subset 
 # (i.e. consensus for certain indices, or patients with a certain label)
-consensus_edge <- function(diff_network_object, node1="N1", node2="N2", edge_weight="Weight", edge_color="Type"){
+consensus_edge <- function(diff_network_object, edge_weight="Weight", edge_color="Type"){
  
   node1="N1"
   node2="N2"
@@ -287,8 +314,8 @@ consensus_edge <- function(diff_network_object, node1="N1", node2="N2", edge_wei
       aes(x = X.x, y = Y.x, xend = X.y, yend = Y.y, size=abs(value), color=abs(value)),  curvature = 50,angle = 270,
       data = edges_loops_occurrences
     ) +
-    guides(size=guide_legend(title="Number of Patients w/ Interaction")) +
-    guides(color=guide_legend(title="Number of Patients w/ Interaction")) +
+    guides(size=FALSE) +
+    guides(color=guide_colorbar(title="Number of Individuals with Edge")) +
     geom_circle(aes(x0 = X, y0 = Y, r = radius, fill = Node), data=node_xy_df) +geom_label_repel(aes(x=X,y=Y,label=Node),hjust=0, vjust=0, data=node_xy_df) +
     guides(fill=guide_legend(title="Cell Type")) + 
     ylim(c(0, max(node_xy_df$Y+10))) + xlim(c(0, max(node_xy_df$X+10))) +
@@ -317,7 +344,7 @@ subset_network_plot <- function(network_plot, nodename){
   
 
   q <- ggplot_gtable(q)
-  plot(q)
+  grid::grid.draw(q)
 }
 
 
