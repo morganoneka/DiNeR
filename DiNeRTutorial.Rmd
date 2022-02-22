@@ -12,6 +12,7 @@ DiNeR (*Di*fferential *Ne*twork Visualization in *R*) is a library built on top 
 
 ```{r}
 source("./DifferentialNetworkVis.R")
+library(tidyverse)
 ```
 
 ## Create dummy data

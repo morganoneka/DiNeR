@@ -345,7 +345,7 @@ consensus_edge <- function(diff_network_object, colors=NULL, nodetype="Node Type
       aes(x = X.x, y = Y.x, xend = X.y, yend = Y.y, size=size, color=abs(value)),alpha=0.8,  curvature = 50,angle = 270,
       data = edges_loops_occurrences
     ) + scale_color_gradient(low=colors[1],high=colors[2]) + 
-    guides(size=FALSE) + gudes(alpha=FALSE) +
+    guides(size=FALSE) + guides(alpha=FALSE) +
     guides(color=guide_colorbar(title="Number of Individuals with Edge")) +
     geom_circle(aes(x0 = X, y0 = Y, r = radius, fill = Node), data=node_xy_df) +geom_label_repel(aes(x=X,y=Y,label=Node),hjust=0, vjust=0, data=node_xy_df) +
     guides(fill=guide_legend(title=nodetype)) + 
@@ -365,6 +365,7 @@ subset_network_plot <- function(network_plot, nodename){
   celltype_loc = q$data[[node_idx]][which(q$data[[node_idx]]$label == nodename),c("y","x")]
   
   for (i in 1:(length(q$data)-1)){
+    # "yend" is only a column when we are dealing with lines
     if ("yend" %in% colnames(q$data[[i]])){
       relevant_lines = c(which(q$data[[i]]$y == celltype_loc$y & q$data[[i]]$x == celltype_loc$x),
                          which(q$data[[i]]$yend == celltype_loc$y & q$data[[i]]$xend == celltype_loc$x))
@@ -535,7 +536,6 @@ make_piecharts_by_group <- function(diff_network_object, colors=c(), edge_featur
   }
   
   # create matrix to store distances
-  #TODO: this will only happen if flag says we sort by distance vs. 
   inx_dist <- as.data.frame(matrix(nrow=0,ncol=2), stringsAsFactors = FALSE)
   
   # scatterpie coords
@@ -575,8 +575,9 @@ make_piecharts_by_group <- function(diff_network_object, colors=c(), edge_featur
   
   merged_data[,c(edge_features, "Other")] = sapply(merged_data[,c(edge_features, "Other")], as.numeric)
   
-  if (length(colors) != (length(interaction_types)+1)){
-    colors = rainbow(length(interaction_types)+1)
+
+  if (length(colors) != (length(edge_features)+1)){
+    colors = rainbow(length(edge_features)+1)
   }
   
 
