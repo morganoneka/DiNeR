@@ -1,11 +1,20 @@
-Package: DiNer
+Package: DiNeR
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Visualization for Network Comparison
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+Author: Morgan Oneka
+Maintainer: Morgan Oneka <onekam@umich.edu>
+Description: Functionality for visualizing multiple networks with a consistent node layout, plus additional plots for comparison of edge classes and comparison across groups.
+License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true
+Imports:
+	igraph,
+  ggplot2,
+  ggforce,
+  reshape2,
+  ggrepel,
+  ggnewscale,
+  scatterpie,
+  ggpubr,
+  ggthemes
