@@ -1,3 +1,12 @@
+
+#' Make pie charts
+#'
+#' Create symmetric pie chart plot for edge class
+#'
+#' @param diff_network_object The DiNeR object to create the plot for
+#' @param edge_feature The name of the feature we want to get edge class composition for
+#' @return The pie chart visualization
+#' @export
 make_piecharts <- function(diff_network_object, colors=c(), edge_feature=""){
 
   #TODO test to see if edge_Feature is in columns for diff_network_object$EdgeFeature
@@ -100,6 +109,16 @@ make_piecharts <- function(diff_network_object, colors=c(), edge_feature=""){
 
 }
 
+#' Make pie charts
+#'
+#' Create piecharts of edge class for each edge, split by a group
+#'
+#' @param diff_network_object The DiNeR object to create the plot for
+#' @param colors The colors to use. This list must have as many colors as there are possible values for the edge feature, plus an additional color for "Other"
+#' @param edge_feature The name of the feature we want to get edge class composition for
+#' @param rows OPTIONAL: The names of the interactions we want to visualize. Each entry is styled as: "Node1 / Node2".
+#' @return The pie chart visualization
+#' @export
 make_piecharts_by_group <- function(diff_network_object, colors=c(), edge_feature="", group_label="", rows=0){
 
   node1 = "N1"

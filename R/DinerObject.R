@@ -1,3 +1,11 @@
+
+#' Create DiNeR object
+#'
+#' This function creates a DiNeR object
+#'
+#' @param edge_list A list of data frames; each data frame is exactly two columns, representing the two nodes connected
+#' @return A DiNeR object consisting of a node adjacency list for each sample and XY coordinates for nodes.
+#' @export
 create_diff_network_object <- function(edge_list){
 
   # error checking to assure we have exactly 2 columns to identify node-pair relationships from
@@ -73,6 +81,14 @@ create_diff_network_object <- function(edge_list){
   ))
 }
 
+#' Add features for individual networks
+#'
+#' This function adds features for individuals (i.e. for each network) to the input DiNeR object
+#'
+#' @param diff_network_object The DiNeR object to add individual features to
+#' @param df A data.frame containing the features to add. Each column represents a feature, and number of rows should be equal to the number of networks in the object.
+#' @return A DiNeR object with the individual features added
+#' @export
 add_individual_features <- function(diff_network_object, df){
   # sanity check
   if (nrow(df) != length(diff_network_object$EdgeList)){
@@ -90,6 +106,14 @@ add_individual_features <- function(diff_network_object, df){
   return (diff_network_object)
 }
 
+#' Add edge features
+#'
+#' This function adds features for the edges in each network
+#'
+#' @param diff_network_object The DiNeR object to add edge features to
+#' @param df_list A list of data.frame objects. Within each data.frame, each column represents a feature, and the rows signify the edge the feature belongs to.
+#' @return A DiNeR object with the edge features added
+#' @export
 add_edge_features <- function(diff_network_object, df_list){
   # if we already have features, combine
   if ("EdgeFeatures" %in% names(diff_network_object)){
@@ -108,6 +132,14 @@ add_edge_features <- function(diff_network_object, df_list){
 
 }
 
+#' Add node features
+#'
+#' This function adds features for the node in each network
+#'
+#' @param diff_network_object The DiNeR object to add node features to
+#' @param df_list A list of data.frame objects. Within each data.frame, each column represents a feature, and the rows signify the node the feature belongs to.
+#' @return A DiNeR object with the edge features added
+#' @export
 add_node_features <- function(diff_network_object, df){
   # if we already have features, combine
   if ("NodeFeatures" %in% names(diff_network_object)){

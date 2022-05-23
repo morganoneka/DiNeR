@@ -18,3 +18,7 @@ Imports:
   scatterpie,
   ggpubr,
   ggthemes
+Suggests: 
+    rmarkdown,
+    knitr
+VignetteBuilder: knitr

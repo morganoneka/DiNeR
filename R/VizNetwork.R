@@ -1,3 +1,15 @@
+#' Plot Individual
+#'
+#' Create a network plot for one network
+#'
+#' @param diff_network_object The DiNeR object to create the plot for
+#' @param idx Which index to plot
+#' @param edge_weight The name of the edge feature to be used for plotting edge weight
+#' @param edge_color The name of the edge feature to be used for plotting edge color
+#' @param colors A dataframe of colors to be used for edge colors
+#' @param nodetype A label for the node type legend
+#' @return The network visualization
+#' @export
 plot_individual <-function(diff_network_object,idx=1,edge_weight=NULL, edge_color=NULL, colors=NULL, nodetype="Node Type"){
 
   node1="N1"
@@ -61,7 +73,7 @@ plot_individual <-function(diff_network_object,idx=1,edge_weight=NULL, edge_colo
         data = edges_loops) + scale_color_gradient(low=colors[i,"low"],high=colors[i,"high"])
 
     if (is.null(edge_color)){
-      g = g + guides(color = FALSE)
+      # g = g + guides(color = FALSE)
     }
 
     if (is.null(edge_weight)){
@@ -81,8 +93,15 @@ plot_individual <-function(diff_network_object,idx=1,edge_weight=NULL, edge_colo
   g
 }
 
-#TODO: allow calculation for consensus edge for ALL vs. just a subset
-# (i.e. consensus for certain indices, or patients with a certain label)
+#' Consensus Edge
+#'
+#' Create a network plot where edge weight is equal to the number of networks in the object that have an edge between the two nodes
+#'
+#' @param diff_network_object The DiNeR object to create the plot for
+#' @param colors A list of colors to be used for edge colors; there should be one color for "low" and one for "high"
+#' @param nodetype A label for the node type legend
+#' @return The network visualization
+#' @export
 consensus_edge <- function(diff_network_object, colors=NULL, nodetype="Node Type"){
 
   node1="N1"
